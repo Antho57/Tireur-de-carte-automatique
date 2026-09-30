@@ -1,6 +1,5 @@
-# WikiMaster Bot
-
-Extension de navigateur pour [wiki-masters.com](https://www.wiki-masters.com) :
+# Tireur de carte automatique
+Extension de navigateur automatique :
 elle ouvre les paquets de cartes dès qu'ils sont disponibles, suit tes ventes et
 enchères, affiche le prix des cartes et te prévient sur ton téléphone.
 
