@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "WikiMasters Auto-Pull (Firefox)",
+  "version": "2.0.0",
+  "description": "Ouvre automatiquement les paquets WikiMasters, un compte par conteneur Firefox.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": [
+    "alarms",
+    "storage",
+    "scripting",
+    "tabs",
+    "notifications",
+    "cookies",
+    "contextualIdentities"
+  ],
+  "host_permissions": [
+    "https://www.wiki-masters.com/*",
+    "https://api.telegram.org/*"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ],
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "WikiMasters Auto-Pull",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.wiki-masters.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "wikimasters-autopull@local",
+      "strict_min_version": "128.0"
+    }
+  }
+}

@@ -1,0 +1,345 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>WikiMasters Auto-Pull</title>
+<style>
+  :root {
+    color-scheme: dark;
+    /* couleurs de rarete reprises du site */
+    --L: #ffe144; --UR: #fa9931; --SR: #ed6fa3; --R: #c6a7f2; --PC: #b1cff2; --C: #b8f2d5;
+  }
+  body { width: 340px; margin: 0; padding: 14px; background: #0c0d0c; color: #e8e8e8;
+         font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  h1 { font-size: 14px; margin: 0; }
+  h1 span { color: #7bd88f; }
+  .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #212321; color: #9a9a9a; }
+  .pill.on { background: #173222; color: #7bd88f; }
+
+  nav { display: flex; gap: 4px; background: #151615; border-radius: 9px; padding: 3px; margin-bottom: 10px; }
+  nav button { flex: 1; background: none; color: #9a9a9a; padding: 5px 2px; border-radius: 7px; font-size: 12px; }
+  nav button.active { background: #262826; color: #e8e8e8; }
+  nav .count { font-size: 11px; color: #7bd88f; margin-left: 3px; }
+  section[hidden] { display: none; }
+
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 0; }
+  .muted { color: #9a9a9a; font-size: 12px; }
+  .status { background: #171917; border: 1px solid #262826; border-radius: 10px; padding: 9px 10px; margin: 0 0 8px; }
+  .big { font-size: 14px; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .cell { background: #111211; border-radius: 8px; padding: 6px 8px; }
+  .cell b { display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .cell small { color: #8a8c8a; font-size: 11px; }
+  button { font: inherit; border: 0; border-radius: 8px; padding: 7px 11px; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  .primary { background: #7bd88f; color: #0c0d0c; font-weight: 600; flex: 1; }
+  .primary.stop { background: #e06c6c; }
+  .ghost { background: #212321; color: #e8e8e8; }
+  .link { background: none; color: #9a9a9a; padding: 0; font-size: 12px; text-decoration: underline; }
+  label.sw { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #c4c4c4; }
+  input[type=number] { width: 52px; background: #171917; color: #e8e8e8; border: 1px solid #2c2e2c;
+                       border-radius: 6px; padding: 3px 5px; font: inherit; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #6f716f; margin: 12px 0 2px; }
+  ul { list-style: none; margin: 4px 0 0; padding: 0; }
+  #log { max-height: 160px; overflow-y: auto; }
+  #log li { padding: 4px 0; border-top: 1px solid #1e201e; font-size: 12px; display: flex; gap: 7px; }
+  #log li time { color: #6f716f; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .ok { color: #7bd88f; } .warn { color: #e0b252; } .error { color: #e06c6c; }
+  details { margin-top: 8px; font-size: 12px; color: #9a9a9a; }
+  pre { background: #111211; border-radius: 8px; padding: 8px; margin: 6px 0 0; max-height: 140px;
+        overflow: auto; font-size: 11px; white-space: pre-wrap; word-break: break-all; }
+
+  /* compteur du jour */
+  .tally { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 6px; }
+  .tally div { background: #111211; border-radius: 8px; padding: 6px 0 5px; text-align: center; border-top: 2px solid var(--c); }
+  .tally b { display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .tally small { font-size: 11px; font-weight: 700; color: var(--c); }
+  .tally .zero b { color: #4a4c4a; }
+
+  /* cartes rares */
+  #cards { max-height: 290px; overflow-y: auto; }
+  #cards li { display: flex; gap: 9px; padding: 7px 0; border-top: 1px solid #1e201e; align-items: center; }
+  .thumb { width: 34px; height: 46px; border-radius: 5px; object-fit: cover; flex-shrink: 0;
+           background: #1a1b1a; border: 2px solid var(--c); box-sizing: border-box; }
+  .info { min-width: 0; flex: 1; }
+  .title { font-weight: 600; color: #e8e8e8; text-decoration: none; display: block;
+           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  a.title:hover { text-decoration: underline; }
+  .meta { color: #8a8c8a; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge { font-size: 10px; font-weight: 800; color: #0d1117; background: var(--c); border-radius: 4px;
+           padding: 1px 5px; flex-shrink: 0; }
+  .empty { color: #6f716f; font-size: 12px; padding: 14px 0; text-align: center; }
+  .filters { display: flex; gap: 4px; margin: 2px 0 2px; }
+  .seg { display: flex; gap: 2px; background: #151615; border-radius: 7px; padding: 2px; }
+  .seg button { font-size: 11px; padding: 3px 10px; background: none; color: #9a9a9a; border-radius: 5px; }
+  .seg button.active { background: #262826; color: #e8e8e8; }
+
+  /* paquets complets */
+  #packs { max-height: 330px; overflow-y: auto; }
+  #packs li { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-top: 1px solid #1e201e; }
+  #packs time { width: 32px; flex-shrink: 0; font-size: 11px; color: #6f716f; font-variant-numeric: tabular-nums; }
+  .pc { position: relative; width: 50px; height: 68px; flex-shrink: 0; border-radius: 6px; overflow: hidden;
+        border: 2px solid var(--c); background: #1a1b1a; box-sizing: border-box; cursor: pointer; }
+  .pc.glow { box-shadow: 0 0 8px var(--c); }
+  .pc img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .pc .ph { padding: 4px 3px; font-size: 9px; line-height: 1.15; color: #9a9a9a; overflow: hidden; height: 46px; }
+  .pc b { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: 9px; font-weight: 800;
+          color: #0d1117; background: var(--c); line-height: 13px; }
+
+  /* info-bulle au survol */
+  .tip { position: fixed; z-index: 10; width: 200px; background: #1b1d1b; border: 1px solid var(--c); border-radius: 9px;
+         padding: 8px; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.6); font-size: 12px; }
+  .tip img { width: 100%; height: 110px; object-fit: cover; border-radius: 6px; display: block; margin-bottom: 6px; }
+  .tip .head { display: flex; justify-content: space-between; gap: 6px; align-items: flex-start; }
+  .tip .t { font-weight: 600; }
+  .tip .m { color: #9a9a9a; font-size: 11px; margin-top: 3px; }
+  .tip .s { color: #c4c4c4; font-size: 11px; margin-top: 5px; line-height: 1.35; }
+
+  /* onglet marche */
+  .mk li { display: flex; gap: 9px; padding: 7px 0; border-top: 1px solid #1e201e; align-items: center; }
+  .mk .end { font-variant-numeric: tabular-nums; }
+  .mk .end.soon { color: #e06c6c; font-weight: 600; }
+  .amount { text-align: right; flex-shrink: 0; }
+  .amount b { display: block; font-size: 14px; color: #e0b252; font-variant-numeric: tabular-nums; }
+  .amount small { font-size: 10px; font-weight: 700; }
+  .lead { color: #7bd88f; } .outbid { color: #e06c6c; }
+
+  /* prix du marche */
+  .price { font-size: 11px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .price.ok { color: #e0b252; }
+  .price.none, .price.wait { color: #6f716f; }
+  .tip .price { margin-top: 4px; white-space: normal; font-weight: 600; }
+  .filters button { font-size: 11px; padding: 2px 7px; background: #171917; color: #9a9a9a; border: 1px solid #262826; }
+  .steps { margin: 4px 0 8px; padding-left: 18px; color: #c4c4c4; font-size: 12px; }
+  .steps li { padding: 2px 0; }
+  .steps a, .tg a { color: #7bd88f; }
+  input[type=password], input[type=text] { flex: 1; min-width: 0; background: #171917; color: #e8e8e8;
+    border: 1px solid #2c2e2c; border-radius: 6px; padding: 6px 7px; font: inherit; }
+  .msg { font-size: 12px; min-height: 16px; margin-top: 4px; }
+  /* mise en vente */
+  .sellBtn { display: none; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
+             background: #e0b252; color: #0c0d0c; flex-shrink: 0; }
+  #cards li:hover .sellBtn { display: inline-block; }
+  .pc .sellBtn { position: absolute; top: 3px; left: 3px; right: 3px; padding: 2px 0; font-size: 9px; }
+  .pc:hover .sellBtn { display: block; }
+  #owned { max-height: 300px; overflow-y: auto; }
+  .owned li { cursor: pointer; }
+  .owned li:hover .title { text-decoration: underline; }
+  .owned li.off { opacity: .45; cursor: default; }
+  .owned li.off:hover .title { text-decoration: none; }
+  #sellDurations { margin: 3px 0 6px; }
+  #sellDurations button { flex: 1; padding: 4px 0; }
+  #sellInfo div { font-size: 12px; }
+  .filters button.active { color: var(--c, #e8e8e8); border-color: var(--c, #6f716f); }
+</style>
+
+<header>
+  <h1><span>Wiki</span>Masters Auto-Pull</h1>
+  <span class="pill" id="pill">Arrêté</span>
+</header>
+
+<nav>
+  <button data-tab="bot" class="active">Bot</button>
+  <button data-tab="cards">Cartes<span class="count" id="rareCount"></span></button>
+  <button data-tab="market">Marché<span class="count" id="mkCount"></span></button>
+  <button data-tab="tg">Telegram<span class="count" id="tgDot"></span></button>
+</nav>
+
+<section id="tab-bot">
+  <div class="status">
+    <div class="big" id="status">…</div>
+    <div class="muted" id="next"></div>
+    <div class="grid">
+      <div class="cell"><b id="stock">—</b><small>paquets en stock</small></div>
+      <div class="cell"><b id="regen">—</b><small>prochaine recharge</small></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button class="primary" id="toggle">Activer</button>
+    <button class="ghost" id="now" title="Tenter une ouverture maintenant">Essai</button>
+    <button class="ghost" id="site" title="Ouvrir wiki-masters.com/pulls">Site</button>
+  </div>
+
+  <h2>Options</h2>
+  <div class="row"><label class="sw"><input type="checkbox" id="autoVerify"> Valider la pop-up anti-robot</label></div>
+  <div class="row"><label class="sw"><input type="checkbox" id="domFallback"> Plan B : clic dans la page</label></div>
+  <div class="row">
+    <span class="muted">Délai aléatoire après recharge</span>
+    <span class="muted"><input type="number" id="jitterMin" min="0" max="3600"> à <input type="number" id="jitterMax" min="0" max="3600"> s</span>
+  </div>
+
+  <h2>Journal</h2>
+  <div class="row">
+    <span class="muted" id="stats"></span>
+    <button class="link" id="reset">Remettre à zéro</button>
+  </div>
+  <ul id="log"></ul>
+
+  <details>
+    <summary>Dernière réponse du serveur</summary>
+    <pre id="raw">Aucune</pre>
+  </details>
+</section>
+
+<section id="tab-cards" hidden>
+  <h2 style="margin-top:0">Aujourd'hui · <span id="dayPacks">0 paquet</span></h2>
+  <div class="tally" id="tally"></div>
+
+  <div class="row" style="margin-top:6px">
+    <label class="sw"><input type="checkbox" id="notify"> Notifier les UR et L</label>
+    <button class="link" id="testNotify">Tester</button>
+  </div>
+  <div class="row">
+    <label class="sw"><input type="checkbox" id="pricesEnabled"> Chercher les prix sur le marché (R et +)</label>
+  </div>
+
+  <div class="row" style="margin-top:4px">
+    <div class="seg" id="views">
+      <button data-v="list" class="active">Liste</button>
+      <button data-v="packs">Paquets</button>
+    </div>
+    <span>
+      <button class="link" id="refreshPrices" title="Chercher le prix des R, SR, UR et L déjà reçues">Rechercher les prix</button>
+      &nbsp;
+      <button class="link" id="clearCards">Vider</button>
+    </span>
+  </div>
+  <div class="msg muted" id="priceMsg" style="margin-top:0"></div>
+
+  <div id="view-list">
+    <div class="filters" id="filters" title="« Toutes » masque les PC et C : utilise leur filtre pour les voir">
+      <button data-r="" class="active">Toutes</button>
+      <button data-r="L" style="--c: var(--L)">L</button>
+      <button data-r="UR" style="--c: var(--UR)">UR</button>
+      <button data-r="SR" style="--c: var(--SR)">SR</button>
+      <button data-r="R" style="--c: var(--R)">R</button>
+      <button data-r="PC" style="--c: var(--PC)">PC</button>
+      <button data-r="C" style="--c: var(--C)">C</button>
+    </div>
+    <ul id="cards"></ul>
+  </div>
+
+  <div id="view-packs" hidden>
+    <ul id="packs"></ul>
+  </div>
+
+  <div class="tip" id="tip" hidden></div>
+</section>
+
+<section id="tab-market" hidden>
+  <div class="row">
+    <label class="sw"><input type="checkbox" id="marketEnabled"> Suivre mes ventes et enchères</label>
+    <button class="link" id="openMarket">Ouvrir le marché</button>
+  </div>
+  <div class="row"><label class="sw"><input type="checkbox" id="auctionOverlay"> Prix du marché sur les pages d'enchère du site</label></div>
+  <div class="muted" id="marketMsg"></div>
+
+  <div id="mkLists">
+    <h2>Mes enchères <span id="bidCount"></span></h2>
+    <ul class="mk" id="bidding"></ul>
+
+    <h2>Mes ventes <span id="sellCount"></span></h2>
+    <ul class="mk" id="selling"></ul>
+    <button class="ghost" id="sellOpen" style="width:100%;margin-top:8px">Mettre une carte aux enchères</button>
+
+    <div class="muted" style="margin-top:10px">Notifications : surenchère et 3 min avant la fin de tes enchères.
+      Mise à jour toutes les 25 à 40 s quand quelque chose est en cours, sinon toutes les 2 à 4 min.</div>
+  </div>
+
+  <div id="sellPanel" hidden>
+    <div class="row" style="margin-top:6px">
+      <h2 style="margin:0">Mettre aux enchères</h2>
+      <button class="link" id="sellClose">Retour</button>
+    </div>
+
+    <!-- 1. choix de la carte -->
+    <div id="sellPick">
+      <div class="row"><input type="text" id="sellQ" placeholder="Rechercher dans ma collection" spellcheck="false"></div>
+      <div class="filters" id="sellFilters">
+        <button data-r="" class="active">Toutes</button>
+        <button data-r="L" style="--c: var(--L)">L</button>
+        <button data-r="UR" style="--c: var(--UR)">UR</button>
+        <button data-r="SR" style="--c: var(--SR)">SR</button>
+        <button data-r="R" style="--c: var(--R)">R</button>
+        <button data-r="PC" style="--c: var(--PC)">PC</button>
+        <button data-r="C" style="--c: var(--C)">C</button>
+      </div>
+      <ul class="mk owned" id="owned"></ul>
+      <button class="link" id="ownedMore" hidden>Plus de cartes</button>
+    </div>
+
+    <!-- 2. mise de depart et duree -->
+    <div id="sellForm" hidden>
+      <ul class="mk" id="sellCard"></ul>
+      <div class="status" id="sellInfo" style="margin-top:4px">…</div>
+      <div class="row">
+        <span class="muted">Mise de départ</span>
+        <span class="muted"><input type="number" id="sellAmount" min="1" step="1" style="width:80px"> WB</span>
+      </div>
+      <div class="muted" style="padding-top:4px">Durée</div>
+      <div class="seg" id="sellDurations">
+          <button data-m="10">10 min</button><button data-m="30">30 min</button><button data-m="60" class="active">1 h</button>
+          <button data-m="180">3 h</button><button data-m="360">6 h</button><button data-m="720">12 h</button>
+      </div>
+      <div class="muted" style="font-size:11px">Un exemplaire est mis en réserve pendant l'enchère.</div>
+      <div class="row" style="margin-top:6px">
+        <button class="primary" id="sellGo">Mettre aux enchères</button>
+        <button class="ghost" id="sellBack">Changer</button>
+      </div>
+    </div>
+    <div class="msg" id="sellMsg"></div>
+  </div>
+</section>
+
+<section id="tab-tg" hidden>
+  <!-- 1. pas de token -->
+  <div id="tgSetup">
+    <h2 style="margin-top:0">Connecter ton téléphone</h2>
+    <ol class="steps">
+      <li>Sur Telegram, ouvre <a href="https://t.me/BotFather" target="_blank">@BotFather</a> et envoie <code>/newbot</code>.</li>
+      <li>Choisis un nom, puis un identifiant qui finit par <code>bot</code>.</li>
+      <li>Copie le <b>token</b> qu'il te donne et colle-le ici.</li>
+    </ol>
+    <div class="row">
+      <input type="password" id="tgToken" placeholder="123456789:AAE…" autocomplete="off" spellcheck="false">
+      <button class="primary" id="tgSave" style="flex:0">Enregistrer</button>
+    </div>
+    <div class="msg" id="tgMsg"></div>
+  </div>
+
+  <!-- 2. token enregistre, en attente de /start -->
+  <div id="tgWait" hidden>
+    <div class="status tg">
+      <div class="big">Dernière étape</div>
+      <div class="muted">Ouvre <a id="tgLink" target="_blank"></a> sur ton téléphone et appuie sur <b>Démarrer</b> (ou envoie <code>/start</code>).</div>
+      <div class="muted" style="margin-top:6px">En attente…</div>
+    </div>
+    <button class="link" id="tgCancel">Annuler</button>
+  </div>
+
+  <!-- 3. connecte -->
+  <div id="tgOn" hidden>
+    <div class="status tg">
+      <div class="big">✅ Connecté</div>
+      <div class="muted" id="tgWho"></div>
+    </div>
+    <h2>Envoyer sur Telegram</h2>
+    <div class="row"><label class="sw"><input type="checkbox" id="tgCards"> Les cartes UR et L (avec image)</label></div>
+    <div class="row"><label class="sw"><input type="checkbox" id="tgSR"> Aussi les SR</label></div>
+    <div class="row"><label class="sw"><input type="checkbox" id="tgAlerts"> Alertes si le bot est en panne</label></div>
+    <div class="row"><label class="sw"><input type="checkbox" id="tgMarket"> Surenchères et fins d'enchère</label></div>
+    <div class="row">
+      <label class="sw"><input type="checkbox" id="tgSummary"> Résumé du jour à</label>
+      <span class="muted"><input type="number" id="tgSummaryHour" min="0" max="23"> h</span>
+    </div>
+    <h2>Commandes depuis le téléphone</h2>
+    <div class="muted">/stats · /cartes · /on · /off · /essai · /aide<br>Réponse en 30 s maximum.</div>
+    <div class="row" style="margin-top:10px">
+      <button class="ghost" id="tgTest">Envoyer un test</button>
+      <button class="link" id="tgUnlink">Déconnecter</button>
+    </div>
+    <div class="msg" id="tgTestMsg"></div>
+  </div>
+</section>
+
+<script src="popup.js"></script>

@@ -1,0 +1,17 @@
+# Système
+.DS_Store
+Thumbs.db
+
+# Éditeurs
+.idea/
+.vscode/
+*.swp
+
+# Paquets générés (Firefox .xpi, archives Chrome)
+*.xpi
+*.zip
+*.crx
+*.pem
+
+# Réglages locaux de Claude Code
+.claude/settings.local.json
