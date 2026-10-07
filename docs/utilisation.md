@@ -8,6 +8,7 @@ d'abord le compte en haut : tout ce qui suit concerne le compte sélectionné.
 - [Onglet Cartes](#onglet-cartes)
 - [Onglet Marché](#onglet-marché)
 - [Encart sur les pages d'enchère](#encart-sur-les-pages-denchère)
+- [Prix sur la page Collection](#prix-sur-la-page-collection)
 - [Notifications](#notifications)
 
 ## Sélecteur de compte (Firefox)
@@ -94,6 +95,23 @@ marché » s'ajoute sous le bouton **Miser** :
 | Autres annonces en cours | min → max et moyenne des autres annonces (10 à 30 s de recherche) |
 | Mise minimum | relue chaque seconde dans la page |
 | Position | vert : 10 % ou plus sous la moyenne ; jaune : dans la moyenne ; rouge : 10 % ou plus au-dessus |
+
+## Prix sur la page Collection
+
+Sur la page **Collection** du site, chaque carte affiche en dessous la moyenne
+de ses ventes passées : « ≈ 1 052 WB » (avec ×2, ×3… si tu en as plusieurs
+exemplaires). En **jaune** à partir de 500 WB, en **ambre** à partir de 100 WB.
+« aucune vente » si la carte ne s'est jamais vendue dans sa rareté.
+
+En bas à droite, un encart donne la **valeur estimée de la page** (prix ×
+exemplaires), le nombre de prix déjà connus et la carte la plus chère.
+
+- Seules les cartes visibles à l'écran sont chiffrées, les plus rares d'abord,
+  avec 1,5 à 3,5 s entre deux requêtes : les prix apparaissent au fil du défilement.
+- Chaque prix est gardé 12 h : revenir sur une page déjà vue ne fait aucune requête.
+- Fonctionne avec la pagination, les filtres de rareté et la recherche du site.
+- Désactivable dans l'onglet **Cartes** de la popup : « Prix moyen sous chaque
+  carte de la page Collection du site ».
 
 ## Notifications
 

@@ -34,7 +34,8 @@ wikimaster-bot/
 ├── extension-chrome/      Version Chrome / Edge / Brave (un compte)
 │   ├── manifest.json      Permissions, service worker, content script, popup
 │   ├── background.js      Service worker : ordonnanceur, appels API, heuristiques
-│   ├── content.js         Content script : pop-up anti-robot, clic DOM, encart des prix d'enchère
+│   ├── content.js         Content script : pop-up anti-robot, clic DOM, prix d'enchère et de Collection
+│   ├── page-hook.js       Monde de la page : relaie les réponses de /api/my-collection
 │   ├── popup.html         UI de l'extension (onglets Bot / Cartes / Marché / Telegram)
 │   ├── popup.js           Logique de la popup
 │   └── icons/             icon-16/48/128.png (aussi utilisées par les notifications)
@@ -69,7 +70,7 @@ Débogage :
 | `icons` / `action.default_icon` | `icons/icon-*.png` | icône de l'extension et des notifications |
 | `host_permissions` | `https://www.wiki-masters.com/*`, `https://api.telegram.org/*` | injection + requêtes vers le site ; API Bot Telegram |
 | `background` | `background.js`, `type: module` | service worker MV3 |
-| `content_scripts` | `content.js` sur `https://www.wiki-masters.com/*`, `document_idle` | pop-up anti-robot et clic DOM |
+| `content_scripts` | `page-hook.js` (monde MAIN, `document_start`) puis `content.js` (`document_idle`) sur `https://www.wiki-masters.com/*` | lecture des réponses de la Collection ; pop-up anti-robot, clic DOM, encarts de prix |
 | `action.default_popup` | `popup.html` | interface |
 
 ## 5. API et fonctionnement du site (observé le 2026-09-23)
@@ -241,6 +242,29 @@ Réponses réelles de `/api/packs/open` :
 - `lookupPrice()` (recherche du marché par mot, 7 à 9 s par page) ne sert plus
   qu'au min / max de l'encart des pages d'enchère.
 
+### 6.5 sexies Prix sur la page Collection (`page-hook.js`, fin de `content.js`, `cardPrice()`)
+
+- `page-hook.js` : content script en **monde MAIN** (`document_start`). Il enveloppe
+  `window.fetch` et, pour chaque réponse de `/api/my-collection`, lit un **clone**
+  (requête et réponse intactes) et envoie à `content.js` par `postMessage`
+  (`source: "wm-page-hook"`) : `{ cardId, title, rarity, count }`. Sur demande
+  `wm-content` / `replay`, il renvoie tout ce qu'il a vu (cas où `content.js`
+  se charge après la première réponse).
+- `content.js` sur `/collection` : vignettes = `main div.relative.isolate.group`,
+  titre = `h3`, rareté = classe `glow-l|ur|sr|r|pc|c` du premier enfant.
+  Correspondance par **titre + rareté** (l'ordre des vignettes ne suit pas
+  toujours celui de la réponse). Ligne `.wm-price` ajoutée sous la vignette :
+  « ≈ 1 052 WB » (×N si plusieurs exemplaires), jaune ≥ 500 WB, ambre ≥ 100 WB,
+  « aucune vente », « … » en attente. Encart fixe `#wm-collection-summary` :
+  valeur estimée de la page, nombre de prix connus, carte la plus chère.
+- Chiffrage : une carte à la fois, **visibles seulement** (fenêtre + 600 px),
+  les plus rares d'abord, 1,5 à 3,5 s entre deux requêtes réelles.
+- `WM_CARD_PRICE` → `cardPrice()` (worker, commun aux comptes sur Firefox) :
+  cache `cardPrices` dans `chrome.storage.local` (`"card_id|rareté" → { t, avg }`,
+  12 h, 3 000 entrées max) ; sinon `GET /api/marketplace/cards/<id>/sales?scope=summary`
+  via l'onglet émetteur, réponse `fetched: true`.
+- Option `collectionPrices` (onglet Cartes de la popup), activée par défaut.
+
 ### 6.5 ter Suivi du marché (section `suivi du marche` de `background.js`)
 
 - `pollMarket()` : `GET /api/marketplace?page=1&limit=1&sort=recent&mine=1`
@@ -375,6 +399,7 @@ Une seule clé `chrome.storage.local` : `state`. Écritures sérialisées par
 
 `WM_SET` ignore `tgToken` (le token ne passe que par `WM_TG_SAVE`) et gère
 `enabled` via `setEnabled()`, partagé avec `/on` et `/off`.
+| `WM_CARD_PRICE` | content → worker | `cardId`, `rarity` | `{ ok, price: { t, avg }, fetched? }` |
 | `WM_AUCTION_INFO` | content → worker | `auctionId` | `{ ok, auction, sales, ref }` |
 | `WM_AUCTION_LIVE` | content → worker | `auctionId`, `cardId`, `title`, `rarity`, `shiny` | `{ ok, live: { n, min, max, avg } }` |
 | `WM_LOG` | content → worker | `message`, `level` | `{ ok }` |

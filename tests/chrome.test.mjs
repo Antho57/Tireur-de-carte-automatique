@@ -74,4 +74,17 @@ test("une mise de départ invalide est refusée sans appel", async () => {
   assert.equal(calls.length, before);
 });
 
+test("page Collection : le prix d'une carte est mis en cache", async () => {
+  const tab = { tab: { id: 1, url: "https://www.wiki-masters.com/collection" } };
+  const before = calls.length;
+  const first = await send({ type: "WM_CARD_PRICE", cardId: "card-l", rarity: "L" }, tab);
+  assert.equal(first.price.avg, 1052);
+  assert.equal(first.fetched, true);
+  const second = await send({ type: "WM_CARD_PRICE", cardId: "card-l", rarity: "L" }, tab);
+  assert.equal(second.price.avg, 1052);
+  assert.equal(second.fetched, undefined);
+  assert.equal(calls.length, before + 1);
+  assert.equal(store.cardPrices["card-l|L"].avg, 1052);
+});
+
 test.after(() => setTimeout(() => process.exit(0), 10));   // timers du worker

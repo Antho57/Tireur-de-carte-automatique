@@ -38,6 +38,16 @@
         "https://www.wiki-masters.com/*"
       ],
       "js": [
+        "page-hook.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://www.wiki-masters.com/*"
+      ],
+      "js": [
         "content.js"
       ],
       "run_at": "document_idle"

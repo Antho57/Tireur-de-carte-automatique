@@ -454,6 +454,7 @@ function priceInfo(c) {
 function renderCards(state) {
   if (document.activeElement !== $("notify")) $("notify").checked = state.notify;
   $("pricesEnabled").checked = state.pricesEnabled;
+  $("collectionPrices").checked = state.collectionPrices !== false;
   $("refreshPrices").disabled = !state.pricesEnabled;
   $("refreshPrices").title = state.pricesEnabled ? "Chercher le prix des R, SR, UR et L déjà reçues" : "Recherche des prix coupée";
   const visible = state.rareCards.filter((c) => IN_ALL.includes(c.rarity));
@@ -690,6 +691,7 @@ $("pricesEnabled").onchange = async (e) => {
   if (!e.target.checked) priceNote = { text: "Recherche des prix coupée, file vidée.", until: Date.now() + 4000 };
   refresh();
 };
+$("collectionPrices").onchange = (e) => send({ type: "WM_SET", patch: { collectionPrices: e.target.checked } });
 $("testNotify").onclick = () => send({ type: "WM_TEST_NOTIFY" });
 $("clearCards").onclick = async () => render(await send({ type: "WM_CLEAR_CARDS" }));
 $("refreshPrices").onclick = async () => {

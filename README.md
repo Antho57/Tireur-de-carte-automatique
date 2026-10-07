@@ -51,6 +51,8 @@ Deux versions sont fournies :
   en deux clics. Raccourci **Vendre** au survol d'une carte.
 - **Encart « Prix du marché »** sur les pages d'enchère du site : moyenne des
   ventes, min / max des autres annonces, position de la mise minimum.
+- **Prix sous chaque carte de la page Collection** du site, avec la valeur
+  estimée de la page : on voit tout de suite les cartes qui valent des wikibidous.
 
 **Telegram**
 - Cartes UR / L (avec image), alertes de panne, surenchères, résumé du soir.
@@ -124,7 +126,8 @@ Chaque extension contient :
 |---|---|
 | `manifest.json` | permissions, script d'arrière-plan, content script, popup |
 | `background.js` | ordonnanceur, appels à l'API du site, prix, marché, Telegram |
-| `content.js` | pop-up anti-robot, clic de secours, encart des prix sur les pages d'enchère |
+| `content.js` | pop-up anti-robot, clic de secours, prix sur les pages d'enchère et de Collection |
+| `page-hook.js` | lit les réponses de la page Collection pour relier chaque carte à son identifiant |
 | `popup.html` / `popup.js` | interface de l'extension |
 | `icons/` | icônes de l'extension et des notifications |
 

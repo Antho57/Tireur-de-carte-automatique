@@ -72,6 +72,7 @@ const DEFAULTS = {
   marketSeen: {},       // auction_id -> { bid, bidderId, leading, notifiedBid }
   marketWarned: {},     // auction_id -> end_at deja signale (« fin dans 3 min »)
   auctionOverlay: true, // encart des prix sur la page d'une enchere du site
+  collectionPrices: true, // prix moyen sous chaque carte de la page Collection du site
   tgLastSummary: "",
   lastStatus: "Jamais lancé",
   log: []
@@ -1216,6 +1217,45 @@ async function auctionLive(tabId, { auctionId, cardId, title, rarity, shiny }) {
   return { ok: true, live };
 }
 
+/* ---------- prix sur la page Collection ---------- */
+/* content.js demande le prix moyen de chaque carte visible sur /collection.
+ * Cache commun « cardPrices » ("card_id|rarete" -> { t, avg }) de 12 h : une
+ * carte deja vue ne coute plus aucune requete. content.js espace lui-meme les
+ * requetes reelles (fetched: true). */
+
+const CARD_PRICE_TTL_MS = 12 * 60 * 60 * 1000;
+const CARD_PRICE_MAX = 3000;
+let cardPriceWrites = Promise.resolve();
+
+function saveCardPrice(key, price) {
+  cardPriceWrites = cardPriceWrites.then(async () => {
+    const { cardPrices = {} } = await chrome.storage.local.get("cardPrices");
+    cardPrices[key] = price;
+    const keys = Object.keys(cardPrices);
+    if (keys.length > CARD_PRICE_MAX) {
+      // On garde les plus recents.
+      keys.sort((a, b) => cardPrices[b].t - cardPrices[a].t).slice(CARD_PRICE_MAX).forEach((k) => delete cardPrices[k]);
+    }
+    await chrome.storage.local.set({ cardPrices });
+  }).catch(() => {});
+  return cardPriceWrites;
+}
+
+async function cardPrice(tabId, { cardId, rarity }) {
+  const key = `${cardId}|${rarity}`;
+  const { cardPrices = {} } = await chrome.storage.local.get("cardPrices");
+  const hit = cardPrices[key];
+  if (hit && Date.now() - hit.t < CARD_PRICE_TTL_MS) return { ok: true, price: hit };
+  const res = await callViaTab(tabId, `${MARKET_PATH}/cards/${encodeURIComponent(cardId)}/sales?scope=summary`, null, "GET");
+  if (!res.ok || !res.data || !res.data.summary || typeof res.data.summary !== "object") {
+    return { ok: false, fetched: true, error: `HTTP ${res.status}` };
+  }
+  const r = res.data.summary[rarity];
+  const price = { t: Date.now(), avg: r && typeof r.average === "number" ? r.average : null };
+  await saveCardPrice(key, price);
+  return { ok: true, fetched: true, price };
+}
+
 /* ---------- cablage ---------- */
 
 // Ne recree l'alarme que si elle manque : create() remet son compteur a zero.
@@ -1300,6 +1340,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "WM_FIND_OWNED") return sendResponse(await safe(findOwned));
     // Envoyes par le content script : on interroge l'onglet qui les a emis.
     if (msg.type === "WM_AUCTION_INFO") return sendResponse(await safe((m) => auctionInfo(sender.tab.id, m)));
+    if (msg.type === "WM_CARD_PRICE") return sendResponse(await safe((m) => cardPrice(sender.tab.id, m)));
     if (msg.type === "WM_AUCTION_LIVE") return sendResponse(await safe((m) => auctionLive(sender.tab.id, m)));
     if (msg.type === "WM_SELL") return sendResponse(await safe(createAuction));
     if (msg.type === "WM_PRICE_REFRESH") {

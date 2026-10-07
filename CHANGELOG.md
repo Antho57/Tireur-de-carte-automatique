@@ -3,6 +3,12 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Les deux extensions ont chacune leur numéro de version (`manifest.json`).
 
+## Non publié
+
+### Ajouté
+- Prix moyen de vente sous chaque carte de la page Collection du site, valeur
+  estimée de la page (Chrome et Firefox). Cache de 12 h, cartes visibles seulement.
+
 ## Firefox 2.0.0 — 2026-09-30
 
 Première version Firefox, dérivée de Chrome 1.3.0.
